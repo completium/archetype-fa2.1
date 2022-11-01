@@ -82,13 +82,14 @@ constant CALLER_NOT_OWNER             : string = "CALLER_NOT_OWNER"
 constant FA2_1_UNSAFE_APPROVAL_CHANGE : string = "FA2.1_UNSAFE_APPROVAL_CHANGE"
 constant FA2_INSUFFICIENT_BALANCE     : string = "FA2_INSUFFICIENT_BALANCE"
 constant FA2_NOT_OPERATOR             : string = "FA2_NOT_OPERATOR"
+constant FA2_1_INVALID_TICKET         : string = "FA2.1_INVALID_TICKET"
 
 /* PARAMETERS ------------------------------------------------------------- */
 
 record transfer_destination {
-  to_dest           : address;
-  token_id_dest     : nat;
-  token_amount_dest : nat
+  td_to_      : address;
+  td_token_id : nat;
+  td_amount   : nat
 } as ((%to_, (token_id, amount)))
 
 record transfer_param {
@@ -96,9 +97,15 @@ record transfer_param {
   tp_txs  : list<transfer_destination>;
 } as ((%from_, %txs))
 
+record transfer_event_item_dest {
+  teid_to_      : option<address>;
+  teid_token_id : nat;
+  teid_amount   : nat
+} as ((%to_, (token_id, amount)))
+
 record transfer_event_item {
   tei_from_ : option<address>;
-  tei_txs: list<transfer_destination>;
+  tei_txs: list<transfer_event_item_dest>;
 } as ((from_, txs))
 
 record operator_update_item {
@@ -116,9 +123,11 @@ record approve_param {
 } as ((%owner, %spender, %token_id, %value))
 
 record approve_event_item {
-  aei_from_ : option<address>;
-  aei_txs: list<transfer_destination>;
-} as ((from_, txs))
+  aei_owner: address;
+  aei_spender: address;
+  aei_token_id: nat;
+  aei_value : nat;
+} as ((%owner, %spender, %token_id, %new_value))
 
 /* STORAGE ---------------------------------------------------------------- */
 
@@ -126,6 +135,11 @@ asset ledger identified by lowner ltokenid to big_map {
   lowner     : address;
   ltokenid   : nat;
   lamount    : nat = 0;
+}
+
+asset total_supply_ to big_map {
+  tstokenid : nat;
+  tsamount  : nat = 0;
 }
 
 asset operator identified by oaddr otoken oowner to big_map {
@@ -155,7 +169,7 @@ event operator_update_event {
 
 event approval_event {
   ae_sender : address;
-  ae_approval_update : list<approve_param>
+  ae_approval_update : list<approve_event_item>
 } as ((sender, approval_update))
 
 /* ENTRYPOINTS ------------------------------------------------------------- */
@@ -227,7 +241,7 @@ entry approve(input : list<approve_param>) {
     do_fail_if(v > 0, (FA2_1_UNSAFE_APPROVAL_CHANGE, v));
     approve_.put({aowner = i.ar_owner; aspender = i.ar_spender; atoken_id = i.ar_token_id; avalue = i.ar_value})
   done;
-  emit<approval_event>({ae_sender = caller; ae_approval_update = input})
+  emit<approval_event>({ae_sender = caller; ae_approval_update = map(input, x -> { aei_owner = x.ar_owner; aei_spender = x.ar_spender; aei_token_id = x.ar_token_id; aei_value = x.ar_value})})
 }
 
 entry %transfer (txs : list<transfer_param>) {
@@ -237,27 +251,27 @@ entry %transfer (txs : list<transfer_param>) {
       const %from = tx.tp_from;
       const tds   = tx.tp_txs;
       for td in tds do begin
-        const tid = td.token_id_dest;
+        const tid = td.td_token_id;
         const amount = ledger[(%from, tid)]?.lamount ? the : 0;
-        if caller = %from or operator.contains((caller, td.token_id_dest, %from)) then
+        if caller = %from or operator.contains((caller, td.td_token_id, %from)) then
           () // do nothing
         else begin
-          const k = (caller, %from, td.token_id_dest);
+          const k = (caller, %from, td.td_token_id);
           const vapprove_a ?= approve_[k] : FA2_NOT_OPERATOR;
           do_require(vapprove_a.avalue >= amount, "");
           approve_.update(k, {avalue -= amount})
         end;
         const new_amount ?=
-            int_to_nat(amount - td.token_amount_dest) : FA2_INSUFFICIENT_BALANCE;
+            int_to_nat(amount - td.td_amount) : FA2_INSUFFICIENT_BALANCE;
         if new_amount = 0 then
           ledger.remove((%from, tid))
         else begin
           ledger.update((%from, tid), { lamount := new_amount });
         end;
-        ledger.add_update((td.to_dest, tid), { lamount += td.token_amount_dest })
+        ledger.add_update((td.td_to_, tid), { lamount += td.td_amount })
       end done
     done;
-    emit<transfer_event>({te_sender = caller; te_transfer = map(txs, tx -> {tei_from_ = some(tx.tp_from); tei_txs = tx.tp_txs})})
+    emit<transfer_event>({te_sender = caller; te_transfer = map(txs, tx -> {tei_from_ = some(tx.tp_from); tei_txs = map(tx.tp_txs, x -> {teid_to_ = some(x.td_to_); teid_token_id = x.td_token_id; teid_amount = x.td_amount})})})
   }
 }
 
@@ -266,6 +280,8 @@ entry mint (tow : address, tid : nat, nbt : nat) {
   require { fa2_r5: is_not_paused() }
   effect {
     ledger.add_update((tow, tid), { lamount += nbt });
+    total_supply_.add_update(tid, {tsamount += nbt});
+    emit<transfer_event>({te_sender = caller; te_transfer = [{tei_from_ = none; tei_txs = [{teid_to_ = some(tow); teid_token_id = tid; teid_amount = nbt}]}]})
   }
 }
 
@@ -280,7 +296,9 @@ entry burn(tid : nat, nbt : nat) {
   effect {
     if (amount > nbt) then
       ledger.update((caller, tid), { lamount -= nbt })
-    else ledger.remove((caller, tid))
+    else ledger.remove((caller, tid));
+    total_supply_.add_update(tid, {tsamount -= nbt});
+    emit<transfer_event>({te_sender = caller; te_transfer = [{tei_from_ = some(caller); tei_txs = [{teid_to_ = none; teid_token_id = tid; teid_amount = nbt}]}]})
   }
 }
 
@@ -290,28 +308,64 @@ record export_ticket_item {
   eti_amount   : nat;
 } as ((%from, token_id, amount))
 
-entry export_ticket(destination : or<contract<ticket<nat * option<bytes>>>, contract<list<ticket<nat * option<bytes>>>>>, tickets_to_export : list<export_ticket_item>) {
+entry export_ticket(
+  destination : or<contract<ticket<nat * option<bytes>>>, contract<list<ticket<nat * option<bytes>>>>>,
+  tickets_to_export : list<export_ticket_item>
+) {
   var l : list<ticket<nat * option<bytes>>> = [];
+  var ltransfer_event_item : list<transfer_event_item> = [];
   for eti in tickets_to_export do
-    const aaa : (nat * option<bytes>) = (eti.eti_token_id, none<bytes>); // TODO
-    l.prepend(create_ticket(aaa, 1))
+    const %from = eti.eti_from;
+    const ltoken_id = eti.eti_token_id;
+
+    if caller = %from or operator.contains((caller, ltoken_id, %from)) then
+      () // do nothing
+    else begin
+      const k = (caller, %from, ltoken_id);
+      const vapprove_a ?= approve_[k] : FA2_NOT_OPERATOR;
+      do_require(vapprove_a.avalue >= eti.eti_amount, "");
+      approve_.update(k, {avalue -= eti.eti_amount})
+    end;
+
+    const amount ?= ledger[(%from, ltoken_id)]?.lamount : 0;
+    const new_amount ?=
+        int_to_nat(amount - eti.eti_amount) : FA2_INSUFFICIENT_BALANCE;
+    if new_amount = 0 then
+      ledger.remove((%from, ltoken_id))
+    else begin
+      ledger.update((%from, ltoken_id), { lamount := new_amount });
+    end;
+    l.prepend(create_ticket((ltoken_id, some(pack(eti.eti_amount))), amount));
+    const item : transfer_event_item = {tei_from_ = some(%from); tei_txs = [{teid_to_ = none; teid_token_id = ltoken_id; teid_amount = amount}]};
+    ltransfer_event_item.prepend(item);
   done;
-  // operations :=
-  //   match destination with
-  //     | left(c)  -> map(l, x -> make_operation(0tz, c, x))
-  //     | right(c) -> [make_operation(0tz, c, l)]
-  //   end
+  emit<transfer_event>({te_sender = caller; te_transfer = ltransfer_event_item});
+  operations :=
+    match destination with
+      | left(c)  -> map(l, x -> make_operation(0tz, c, x))
+      | right(c) -> [make_operation(0tz, c, l)]
+    end
 }
 
 record import_ticket_param {
-  itp_to: nat;
+  itp_to: address;
   itp_tickets: ticket<nat * option<bytes>>;
 } as ((%to_, %tickets_to_import))
 
 entry import_ticket(input : list<import_ticket_param>) {
-  // TODO
+  var ltransfer_event_item_dest : list<transfer_event_item_dest> = [];
+  for i in input do
+    const t : (address * (nat * option<bytes>) * nat) = read_ticket(i.itp_tickets);
+    const addr = t[0];
+    const ltoken_id = t[1][0];
+    const amount = t[2];
+    do_require(addr = self_address, FA2_1_INVALID_TICKET);
+    ledger.add_update((i.itp_to, ltoken_id), { lamount += amount });
+    const teid : transfer_event_item_dest = {teid_to_ = some(i.itp_to); teid_token_id = ltoken_id; teid_amount = amount};
+    ltransfer_event_item_dest.prepend(teid)
+  done;
+  emit<transfer_event>({te_sender = caller; te_transfer = [{tei_from_ = none; tei_txs = ltransfer_event_item_dest}]})
 }
-
 
 /* VIEWS ----------------------------------------------------------------- */
 
@@ -343,5 +397,5 @@ record total_supply_response {
 } as ((token_id, total_supply))
 
 view total_supply(requests : list<total_supply_request>) : list<total_supply_response> {
-  return map(requests, tsr -> {tt_resp_token_id = tsr.tt_req_token_id; tt_resp_total_supply = 1}) // TODO
+  return map(requests, tsr -> {tt_resp_token_id = tsr.tt_req_token_id; tt_resp_total_supply = total_supply_[tsr.tt_req_token_id].tsamount})
 }
