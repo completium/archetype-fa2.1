@@ -360,9 +360,10 @@ entry import_ticket(input : list<import_ticket_param>) {
     const addr = t[0];
     const ltoken_id = t[1][0];
     const amount = t[2];
+    const ito = i.itp_to;
     do_require(addr = self_address, FA2_1_INVALID_TICKET);
-    ledger.add_update((i.itp_to, ltoken_id), { lamount += amount });
-    const teid : transfer_event_item_dest = {teid_to_ = some(i.itp_to); teid_token_id = ltoken_id; teid_amount = amount};
+    ledger.add_update((ito, ltoken_id), { lamount += amount });
+    const teid : transfer_event_item_dest = {teid_to_ = some(ito); teid_token_id = ltoken_id; teid_amount = amount};
     ltransfer_event_item_dest.prepend(teid)
   done;
   emit<transfer_event>({te_sender = caller; te_transfer = [{tei_from_ = none; tei_txs = ltransfer_event_item_dest}]})
