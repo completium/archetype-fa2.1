@@ -336,8 +336,8 @@ entry export_ticket(
     else begin
       ledger.update((%from, ltoken_id), { lamount := new_amount });
     end;
-    l.prepend(create_ticket((ltoken_id, none<bytes>), amount));
-    const item : transfer_event_item = {tei_from_ = some(%from); tei_txs = [{teid_to_ = none; teid_token_id = ltoken_id; teid_amount = amount}]};
+    l.prepend(create_ticket((ltoken_id, none<bytes>), eti.eti_amount));
+    const item : transfer_event_item = {tei_from_ = some(%from); tei_txs = [{teid_to_ = none; teid_token_id = ltoken_id; teid_amount = eti.eti_amount}]};
     ltransfer_event_item.prepend(item);
   done;
   emit<transfer_event>({te_sender = caller; te_transfer = ltransfer_event_item});

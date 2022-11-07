@@ -1,4 +1,3 @@
-
 {
   "name": "archetype-fa2.1",
   "version": "1.0.0",
@@ -9,6 +8,7 @@
   "dependencies": {
     "@completium/archetype-ts-types": "latest",
     "@completium/completium-cli": "latest",
+    "@completium/event-listener": "latest",
     "@completium/experiment-ts": "latest"
   },
   "devDependencies": {

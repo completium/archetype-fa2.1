@@ -1,44 +1,58 @@
 import * as ex from "@completium/experiment-ts";
 import * as att from "@completium/archetype-ts-types";
-export enum update_for_all_op_types {
-    add_for_all = "add_for_all",
-    remove_for_all = "remove_for_all"
-}
-export abstract class update_for_all_op extends att.Enum<update_for_all_op_types> {
-}
-export class add_for_all extends update_for_all_op {
-    constructor(private content: att.Address) {
-        super(update_for_all_op_types.add_for_all);
-    }
-    to_mich() { return att.left_to_mich(this.content.to_mich()); }
-    toString(): string {
-        return JSON.stringify(this, null, 2);
-    }
-    get() { return this.content; }
-}
-export class remove_for_all extends update_for_all_op {
-    constructor(private content: att.Address) {
-        super(update_for_all_op_types.remove_for_all);
-    }
-    to_mich() { return att.right_to_mich(att.left_to_mich(this.content.to_mich())); }
-    toString(): string {
-        return JSON.stringify(this, null, 2);
-    }
-    get() { return this.content; }
-}
-export const mich_to_update_for_all_op = (m: any): update_for_all_op => {
-    throw new Error("mich_toupdate_for_all_op : complex enum not supported yet");
-};
-export class transfer_destination implements att.ArchetypeType {
-    constructor(public to_dest: att.Address, public token_id_dest: att.Nat, public token_amount_dest: att.Nat) { }
+import * as el from "@completium/event-listener";
+export class transfer_event implements att.ArchetypeType {
+    constructor(public te_sender: att.Address, public te_transfer: Array<transfer_event_item>) { }
     toString(): string {
         return JSON.stringify(this, null, 2);
     }
     to_mich(): att.Micheline {
-        return att.pair_to_mich([this.to_dest.to_mich(), att.pair_to_mich([this.token_id_dest.to_mich(), this.token_amount_dest.to_mich()])]);
+        return att.pair_to_mich([this.te_sender.to_mich(), att.list_to_mich(this.te_transfer, x => {
+                return x.to_mich();
+            })]);
+    }
+    equals(v: transfer_event): boolean {
+        return (this.te_sender.equals(v.te_sender) && this.te_sender.equals(v.te_sender) && JSON.stringify(this.te_transfer) == JSON.stringify(v.te_transfer));
+    }
+}
+export class operator_update_event implements att.ArchetypeType {
+    constructor(public oue_sender: att.Address, public oue_operator_update: Array<operator_update_item>) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.oue_sender.to_mich(), att.list_to_mich(this.oue_operator_update, x => {
+                return x.to_mich();
+            })]);
+    }
+    equals(v: operator_update_event): boolean {
+        return (this.oue_sender.equals(v.oue_sender) && this.oue_sender.equals(v.oue_sender) && JSON.stringify(this.oue_operator_update) == JSON.stringify(v.oue_operator_update));
+    }
+}
+export class approval_event implements att.ArchetypeType {
+    constructor(public ae_sender: att.Address, public ae_approval_update: Array<approve_event_item>) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.ae_sender.to_mich(), att.list_to_mich(this.ae_approval_update, x => {
+                return x.to_mich();
+            })]);
+    }
+    equals(v: approval_event): boolean {
+        return (this.ae_sender.equals(v.ae_sender) && this.ae_sender.equals(v.ae_sender) && JSON.stringify(this.ae_approval_update) == JSON.stringify(v.ae_approval_update));
+    }
+}
+export class transfer_destination implements att.ArchetypeType {
+    constructor(public td_to_: att.Address, public td_token_id: att.Nat, public td_amount: att.Nat) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.td_to_.to_mich(), att.pair_to_mich([this.td_token_id.to_mich(), this.td_amount.to_mich()])]);
     }
     equals(v: transfer_destination): boolean {
-        return (this.to_dest.equals(v.to_dest) && this.to_dest.equals(v.to_dest) && this.token_id_dest.equals(v.token_id_dest) && this.token_amount_dest.equals(v.token_amount_dest));
+        return (this.td_to_.equals(v.td_to_) && this.td_to_.equals(v.td_to_) && this.td_token_id.equals(v.td_token_id) && this.td_amount.equals(v.td_amount));
     }
 }
 export class transfer_param implements att.ArchetypeType {
@@ -55,6 +69,68 @@ export class transfer_param implements att.ArchetypeType {
         return (this.tp_from.equals(v.tp_from) && this.tp_from.equals(v.tp_from) && JSON.stringify(this.tp_txs) == JSON.stringify(v.tp_txs));
     }
 }
+export class transfer_event_item_dest implements att.ArchetypeType {
+    constructor(public teid_to_: att.Option<att.Address>, public teid_token_id: att.Nat, public teid_amount: att.Nat) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.teid_to_.to_mich((x => { return x.to_mich(); })), att.pair_to_mich([this.teid_token_id.to_mich(), this.teid_amount.to_mich()])]);
+    }
+    equals(v: transfer_event_item_dest): boolean {
+        return (this.teid_to_.equals(v.teid_to_) && this.teid_to_.equals(v.teid_to_) && this.teid_token_id.equals(v.teid_token_id) && this.teid_amount.equals(v.teid_amount));
+    }
+}
+export class transfer_event_item implements att.ArchetypeType {
+    constructor(public tei_from_: att.Option<att.Address>, public tei_txs: Array<transfer_event_item_dest>) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.tei_from_.to_mich((x => { return x.to_mich(); })), att.list_to_mich(this.tei_txs, x => {
+                return x.to_mich();
+            })]);
+    }
+    equals(v: transfer_event_item): boolean {
+        return (this.tei_from_.equals(v.tei_from_) && this.tei_from_.equals(v.tei_from_) && JSON.stringify(this.tei_txs) == JSON.stringify(v.tei_txs));
+    }
+}
+export class operator_update_item implements att.ArchetypeType {
+    constructor(public oui_owner: att.Address, public oui_operator: att.Address, public oui_token_id: att.Nat, public oui_is_operator: boolean) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.oui_owner.to_mich(), att.pair_to_mich([this.oui_operator.to_mich(), att.pair_to_mich([this.oui_token_id.to_mich(), att.bool_to_mich(this.oui_is_operator)])])]);
+    }
+    equals(v: operator_update_item): boolean {
+        return (this.oui_owner.equals(v.oui_owner) && this.oui_owner.equals(v.oui_owner) && this.oui_operator.equals(v.oui_operator) && this.oui_token_id.equals(v.oui_token_id) && this.oui_is_operator == v.oui_is_operator);
+    }
+}
+export class approve_param implements att.ArchetypeType {
+    constructor(public ar_owner: att.Address, public ar_spender: att.Address, public ar_token_id: att.Nat, public ar_value: att.Nat) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.ar_owner.to_mich(), att.pair_to_mich([this.ar_spender.to_mich(), att.pair_to_mich([this.ar_token_id.to_mich(), this.ar_value.to_mich()])])]);
+    }
+    equals(v: approve_param): boolean {
+        return (this.ar_owner.equals(v.ar_owner) && this.ar_owner.equals(v.ar_owner) && this.ar_spender.equals(v.ar_spender) && this.ar_token_id.equals(v.ar_token_id) && this.ar_value.equals(v.ar_value));
+    }
+}
+export class approve_event_item implements att.ArchetypeType {
+    constructor(public aei_owner: att.Address, public aei_spender: att.Address, public aei_token_id: att.Nat, public aei_value: att.Nat) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.aei_owner.to_mich(), att.pair_to_mich([this.aei_spender.to_mich(), att.pair_to_mich([this.aei_token_id.to_mich(), this.aei_value.to_mich()])])]);
+    }
+    equals(v: approve_event_item): boolean {
+        return (this.aei_owner.equals(v.aei_owner) && this.aei_owner.equals(v.aei_owner) && this.aei_spender.equals(v.aei_spender) && this.aei_token_id.equals(v.aei_token_id) && this.aei_value.equals(v.aei_value));
+    }
+}
 export class operator_param implements att.ArchetypeType {
     constructor(public opp_owner: att.Address, public opp_operator: att.Address, public opp_token_id: att.Nat) { }
     toString(): string {
@@ -67,18 +143,31 @@ export class operator_param implements att.ArchetypeType {
         return (this.opp_owner.equals(v.opp_owner) && this.opp_owner.equals(v.opp_owner) && this.opp_operator.equals(v.opp_operator) && this.opp_token_id.equals(v.opp_token_id));
     }
 }
-export class gasless_param implements att.ArchetypeType {
-    constructor(public transfer_params: Array<transfer_param>, public user_pk: att.Key, public user_sig: att.Signature) { }
+export class export_ticket_item implements att.ArchetypeType {
+    constructor(public eti_from: att.Address, public eti_token_id: att.Nat, public eti_amount: att.Nat) { }
     toString(): string {
         return JSON.stringify(this, null, 2);
     }
     to_mich(): att.Micheline {
-        return att.pair_to_mich([att.list_to_mich(this.transfer_params, x => {
-                return x.to_mich();
-            }), att.pair_to_mich([this.user_pk.to_mich(), this.user_sig.to_mich()])]);
+        return att.pair_to_mich([this.eti_from.to_mich(), att.pair_to_mich([this.eti_token_id.to_mich(), this.eti_amount.to_mich()])]);
     }
-    equals(v: gasless_param): boolean {
-        return (JSON.stringify(this.transfer_params) == JSON.stringify(v.transfer_params) && JSON.stringify(this.transfer_params) == JSON.stringify(v.transfer_params) && this.user_pk.equals(v.user_pk) && this.user_sig.equals(v.user_sig));
+    equals(v: export_ticket_item): boolean {
+        return (this.eti_from.equals(v.eti_from) && this.eti_from.equals(v.eti_from) && this.eti_token_id.equals(v.eti_token_id) && this.eti_amount.equals(v.eti_amount));
+    }
+}
+export class import_ticket_param implements att.ArchetypeType {
+    constructor(public itp_to: att.Address, public itp_tickets: att.Ticket<[
+        att.Nat,
+        att.Option<att.Bytes>
+    ]>) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.itp_to.to_mich(), this.itp_tickets.to_mich((x => { return att.pair_to_mich([x[0].to_mich(), x[1].to_mich((x => { return x.to_mich(); }))]); }))]);
+    }
+    equals(v: import_ticket_param): boolean {
+        return (this.itp_to.equals(v.itp_to) && this.itp_to.equals(v.itp_to) && this.itp_tickets.equals(v.itp_tickets));
     }
 }
 export class balance_of_request implements att.ArchetypeType {
@@ -105,6 +194,19 @@ export class balance_of_response implements att.ArchetypeType {
         return (this.request == v.request && this.request == v.request && this.balance_.equals(v.balance_));
     }
 }
+export type total_supply_request = att.Nat;
+export class total_supply_response implements att.ArchetypeType {
+    constructor(public tt_resp_token_id: att.Nat, public tt_resp_total_supply: att.Nat) { }
+    toString(): string {
+        return JSON.stringify(this, null, 2);
+    }
+    to_mich(): att.Micheline {
+        return att.pair_to_mich([this.tt_resp_token_id.to_mich(), this.tt_resp_total_supply.to_mich()]);
+    }
+    equals(v: total_supply_response): boolean {
+        return (this.tt_resp_token_id.equals(v.tt_resp_token_id) && this.tt_resp_token_id.equals(v.tt_resp_token_id) && this.tt_resp_total_supply.equals(v.tt_resp_total_supply));
+    }
+}
 export const transfer_destination_mich_type: att.MichelineType = att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("address", ["%to_"]),
     att.pair_array_to_mich_type([
@@ -122,6 +224,53 @@ export const transfer_param_mich_type: att.MichelineType = att.pair_array_to_mic
         ], [])
     ], []), ["%txs"])
 ], []);
+export const transfer_event_item_dest_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.option_annot_to_mich_type(att.prim_annot_to_mich_type("address", []), ["%to_"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("nat", ["%token_id"]),
+        att.prim_annot_to_mich_type("nat", ["%amount"])
+    ], [])
+], []);
+export const transfer_event_item_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.option_annot_to_mich_type(att.prim_annot_to_mich_type("address", []), ["%from_"]),
+    att.list_annot_to_mich_type(att.pair_array_to_mich_type([
+        att.option_annot_to_mich_type(att.prim_annot_to_mich_type("address", []), ["%to_"]),
+        att.pair_array_to_mich_type([
+            att.prim_annot_to_mich_type("nat", ["%token_id"]),
+            att.prim_annot_to_mich_type("nat", ["%amount"])
+        ], [])
+    ], []), ["%txs"])
+], []);
+export const operator_update_item_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%owner"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("address", ["%operator"]),
+        att.pair_array_to_mich_type([
+            att.prim_annot_to_mich_type("nat", ["%token_id"]),
+            att.prim_annot_to_mich_type("bool", ["%is_operator"])
+        ], [])
+    ], [])
+], []);
+export const approve_param_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%owner"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("address", ["%spender"]),
+        att.pair_array_to_mich_type([
+            att.prim_annot_to_mich_type("nat", ["%token_id"]),
+            att.prim_annot_to_mich_type("nat", ["%value"])
+        ], [])
+    ], [])
+], []);
+export const approve_event_item_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%owner"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("address", ["%spender"]),
+        att.pair_array_to_mich_type([
+            att.prim_annot_to_mich_type("nat", ["%token_id"]),
+            att.prim_annot_to_mich_type("nat", ["%new_value"])
+        ], [])
+    ], [])
+], []);
 export const operator_param_mich_type: att.MichelineType = att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("address", ["%owner"]),
     att.pair_array_to_mich_type([
@@ -129,21 +278,19 @@ export const operator_param_mich_type: att.MichelineType = att.pair_array_to_mic
         att.prim_annot_to_mich_type("nat", ["%token_id"])
     ], [])
 ], []);
-export const gasless_param_mich_type: att.MichelineType = att.pair_array_to_mich_type([
-    att.list_annot_to_mich_type(att.pair_array_to_mich_type([
-        att.prim_annot_to_mich_type("address", ["%from_"]),
-        att.list_annot_to_mich_type(att.pair_array_to_mich_type([
-            att.prim_annot_to_mich_type("address", ["%to_"]),
-            att.pair_array_to_mich_type([
-                att.prim_annot_to_mich_type("nat", ["%token_id"]),
-                att.prim_annot_to_mich_type("nat", ["%amount"])
-            ], [])
-        ], []), ["%txs"])
-    ], []), ["%transfer_params"]),
+export const export_ticket_item_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%from"]),
     att.pair_array_to_mich_type([
-        att.prim_annot_to_mich_type("key", ["%user_pk"]),
-        att.prim_annot_to_mich_type("signature", ["%user_sig"])
+        att.prim_annot_to_mich_type("nat", ["%token_id"]),
+        att.prim_annot_to_mich_type("nat", ["%amount"])
     ], [])
+], []);
+export const import_ticket_param_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%to_"]),
+    att.ticket_annot_to_mich_type(att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("nat", []),
+        att.option_annot_to_mich_type(att.prim_annot_to_mich_type("bytes", []), [])
+    ], []), ["%tickets_to_import"])
 ], []);
 export const balance_of_request_mich_type: att.MichelineType = att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("address", ["%owner"]),
@@ -155,6 +302,11 @@ export const balance_of_response_mich_type: att.MichelineType = att.pair_array_t
         att.prim_annot_to_mich_type("nat", ["%token_id"])
     ], ["%request"]),
     att.prim_annot_to_mich_type("nat", ["%balance"])
+], []);
+export const total_supply_request_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
+export const total_supply_response_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("nat", ["%token_id"]),
+    att.prim_annot_to_mich_type("nat", ["%total_supply"])
 ], []);
 export type token_metadata_key = att.Nat;
 export class ledger_key implements att.ArchetypeType {
@@ -169,6 +321,7 @@ export class ledger_key implements att.ArchetypeType {
         return (this.lowner.equals(v.lowner) && this.lowner.equals(v.lowner) && this.ltokenid.equals(v.ltokenid));
     }
 }
+export type total_supply__key = att.Nat;
 export class operator_key implements att.ArchetypeType {
     constructor(public oaddr: att.Address, public otoken: att.Nat, public oowner: att.Address) { }
     toString(): string {
@@ -181,16 +334,16 @@ export class operator_key implements att.ArchetypeType {
         return (this.oaddr.equals(v.oaddr) && this.oaddr.equals(v.oaddr) && this.otoken.equals(v.otoken) && this.oowner.equals(v.oowner));
     }
 }
-export class operator_for_all_key implements att.ArchetypeType {
-    constructor(public fa_oaddr: att.Address, public fa_oowner: att.Address) { }
+export class approve__key implements att.ArchetypeType {
+    constructor(public aowner: att.Address, public aspender: att.Address, public atoken_id: att.Nat) { }
     toString(): string {
         return JSON.stringify(this, null, 2);
     }
     to_mich(): att.Micheline {
-        return att.pair_to_mich([this.fa_oaddr.to_mich(), this.fa_oowner.to_mich()]);
+        return att.pair_to_mich([this.aowner.to_mich(), att.pair_to_mich([this.aspender.to_mich(), this.atoken_id.to_mich()])]);
     }
-    equals(v: operator_for_all_key): boolean {
-        return (this.fa_oaddr.equals(v.fa_oaddr) && this.fa_oaddr.equals(v.fa_oaddr) && this.fa_oowner.equals(v.fa_oowner));
+    equals(v: approve__key): boolean {
+        return (this.aowner.equals(v.aowner) && this.aowner.equals(v.aowner) && this.aspender.equals(v.aspender) && this.atoken_id.equals(v.atoken_id));
     }
 }
 export const token_metadata_key_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
@@ -198,6 +351,7 @@ export const ledger_key_mich_type: att.MichelineType = att.pair_array_to_mich_ty
     att.prim_annot_to_mich_type("address", ["%lowner"]),
     att.prim_annot_to_mich_type("nat", ["%ltokenid"])
 ], []);
+export const total_supply__key_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
 export const operator_key_mich_type: att.MichelineType = att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("address", ["%oaddr"]),
     att.pair_array_to_mich_type([
@@ -205,9 +359,12 @@ export const operator_key_mich_type: att.MichelineType = att.pair_array_to_mich_
         att.prim_annot_to_mich_type("address", ["%oowner"])
     ], [])
 ], []);
-export const operator_for_all_key_mich_type: att.MichelineType = att.pair_array_to_mich_type([
-    att.prim_annot_to_mich_type("address", ["%fa_oaddr"]),
-    att.prim_annot_to_mich_type("address", ["%fa_oowner"])
+export const approve__key_mich_type: att.MichelineType = att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%aowner"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("address", ["%aspender"]),
+        att.prim_annot_to_mich_type("nat", ["%atoken_id"])
+    ], [])
 ], []);
 export class token_metadata_value implements att.ArchetypeType {
     constructor(public token_id: att.Nat, public token_info: Array<[
@@ -229,6 +386,7 @@ export class token_metadata_value implements att.ArchetypeType {
     }
 }
 export type ledger_value = att.Nat;
+export type total_supply__value = att.Nat;
 export class operator_value implements att.ArchetypeType {
     constructor() { }
     toString(): string {
@@ -241,25 +399,15 @@ export class operator_value implements att.ArchetypeType {
         return true;
     }
 }
-export class operator_for_all_value implements att.ArchetypeType {
-    constructor() { }
-    toString(): string {
-        return JSON.stringify(this, null, 2);
-    }
-    to_mich(): att.Micheline {
-        return att.unit_to_mich();
-    }
-    equals(v: operator_for_all_value): boolean {
-        return true;
-    }
-}
+export type approve__value = att.Nat;
 export const token_metadata_value_mich_type: att.MichelineType = att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("nat", ["%token_id"]),
     att.pair_annot_to_mich_type("map", att.prim_annot_to_mich_type("string", []), att.prim_annot_to_mich_type("bytes", []), ["%token_info"])
 ], []);
 export const ledger_value_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
+export const total_supply__value_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
 export const operator_value_mich_type: att.MichelineType = att.prim_annot_to_mich_type("unit", []);
-export const operator_for_all_value_mich_type: att.MichelineType = att.prim_annot_to_mich_type("unit", []);
+export const approve__value_mich_type: att.MichelineType = att.prim_annot_to_mich_type("nat", []);
 export type token_metadata_container = Array<[
     token_metadata_key,
     token_metadata_value
@@ -268,13 +416,17 @@ export type ledger_container = Array<[
     ledger_key,
     ledger_value
 ]>;
+export type total_supply__container = Array<[
+    total_supply__key,
+    total_supply__value
+]>;
 export type operator_container = Array<[
     operator_key,
     operator_value
 ]>;
-export type operator_for_all_container = Array<[
-    operator_for_all_key,
-    operator_for_all_value
+export type approve__container = Array<[
+    approve__key,
+    approve__value
 ]>;
 export const token_metadata_container_mich_type: att.MichelineType = att.pair_annot_to_mich_type("big_map", att.prim_annot_to_mich_type("nat", []), att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("nat", ["%token_id"]),
@@ -284,6 +436,7 @@ export const ledger_container_mich_type: att.MichelineType = att.pair_annot_to_m
     att.prim_annot_to_mich_type("address", ["%lowner"]),
     att.prim_annot_to_mich_type("nat", ["%ltokenid"])
 ], []), att.prim_annot_to_mich_type("nat", []), []);
+export const total_supply__container_mich_type: att.MichelineType = att.pair_annot_to_mich_type("big_map", att.prim_annot_to_mich_type("nat", []), att.prim_annot_to_mich_type("nat", []), []);
 export const operator_container_mich_type: att.MichelineType = att.pair_annot_to_mich_type("big_map", att.pair_array_to_mich_type([
     att.prim_annot_to_mich_type("address", ["%oaddr"]),
     att.pair_array_to_mich_type([
@@ -291,10 +444,13 @@ export const operator_container_mich_type: att.MichelineType = att.pair_annot_to
         att.prim_annot_to_mich_type("address", ["%oowner"])
     ], [])
 ], []), att.prim_annot_to_mich_type("unit", []), []);
-export const operator_for_all_container_mich_type: att.MichelineType = att.pair_annot_to_mich_type("big_map", att.pair_array_to_mich_type([
-    att.prim_annot_to_mich_type("address", ["%fa_oaddr"]),
-    att.prim_annot_to_mich_type("address", ["%fa_oowner"])
-], []), att.prim_annot_to_mich_type("unit", []), []);
+export const approve__container_mich_type: att.MichelineType = att.pair_annot_to_mich_type("big_map", att.pair_array_to_mich_type([
+    att.prim_annot_to_mich_type("address", ["%aowner"]),
+    att.pair_array_to_mich_type([
+        att.prim_annot_to_mich_type("address", ["%aspender"]),
+        att.prim_annot_to_mich_type("nat", ["%atoken_id"])
+    ], [])
+], []), att.prim_annot_to_mich_type("nat", []), []);
 const declare_ownership_arg_to_mich = (candidate: att.Address): att.Micheline => {
     return candidate.to_mich();
 }
@@ -331,8 +487,8 @@ const update_operators_arg_to_mich = (upl: Array<att.Or<operator_param, operator
         return x.to_mich((x => { return x.to_mich(); }), (x => { return x.to_mich(); }));
     });
 }
-const update_operators_for_all_arg_to_mich = (upl: Array<update_for_all_op>): att.Micheline => {
-    return att.list_to_mich(upl, x => {
+const approve_arg_to_mich = (input: Array<approve_param>): att.Micheline => {
+    return att.list_to_mich(input, x => {
         return x.to_mich();
     });
 }
@@ -354,26 +510,34 @@ const burn_arg_to_mich = (tid: att.Nat, nbt: att.Nat): att.Micheline => {
         nbt.to_mich()
     ]);
 }
-const balance_of_arg_to_mich = (requests: Array<balance_of_request>): att.Micheline => {
+const export_ticket_arg_to_mich = (destination: att.Or<att.Entrypoint, att.Entrypoint>, tickets_to_export: Array<export_ticket_item>): att.Micheline => {
+    return att.pair_to_mich([
+        destination.to_mich((x => { return x.to_mich(); }), (x => { return x.to_mich(); })),
+        att.list_to_mich(tickets_to_export, x => {
+            return x.to_mich();
+        })
+    ]);
+}
+const import_ticket_arg_to_mich = (input: Array<import_ticket_param>): att.Micheline => {
+    return att.list_to_mich(input, x => {
+        return x.to_mich();
+    });
+}
+const view_balance_of_arg_to_mich = (requests: Array<balance_of_request>): att.Micheline => {
     return att.list_to_mich(requests, x => {
         return x.to_mich();
     });
 }
-export const deploy_balance_of_callback = async (params: Partial<ex.Parameters>): Promise<att.DeployResult> => {
-    return await ex.deploy_callback("balance_of", att.list_annot_to_mich_type(att.pair_array_to_mich_type([
-        att.pair_array_to_mich_type([
-            att.prim_annot_to_mich_type("address", ["%owner"]),
-            att.prim_annot_to_mich_type("nat", ["%token_id"])
-        ], ["%request"]),
-        att.prim_annot_to_mich_type("nat", ["%balance"])
-    ], []), []), params);
-};
+const view_total_supply_arg_to_mich = (requests: Array<total_supply_request>): att.Micheline => {
+    return att.list_to_mich(requests, x => {
+        return x.to_mich();
+    });
+}
 export class Fa2_1 {
     address: string | undefined;
     constructor(address: string | undefined = undefined) {
         this.address = address;
     }
-    balance_of_callback_address: string | undefined;
     get_address(): att.Address {
         if (undefined != this.address) {
             return new att.Address(this.address);
@@ -391,7 +555,6 @@ export class Fa2_1 {
             owner: owner.to_mich()
         }, params)).address;
         this.address = address;
-        this.balance_of_callback_address = (await deploy_balance_of_callback(params)).address;
     }
     async declare_ownership(candidate: att.Address, params: Partial<ex.Parameters>): Promise<any> {
         if (this.address != undefined) {
@@ -438,9 +601,9 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
-    async update_operators_for_all(upl: Array<update_for_all_op>, params: Partial<ex.Parameters>): Promise<any> {
+    async approve(input: Array<approve_param>, params: Partial<ex.Parameters>): Promise<any> {
         if (this.address != undefined) {
-            return await ex.call(this.address, "update_operators_for_all", update_operators_for_all_arg_to_mich(upl), params);
+            return await ex.call(this.address, "approve", approve_arg_to_mich(input), params);
         }
         throw new Error("Contract not initialised");
     }
@@ -459,6 +622,18 @@ export class Fa2_1 {
     async burn(tid: att.Nat, nbt: att.Nat, params: Partial<ex.Parameters>): Promise<any> {
         if (this.address != undefined) {
             return await ex.call(this.address, "burn", burn_arg_to_mich(tid, nbt), params);
+        }
+        throw new Error("Contract not initialised");
+    }
+    async export_ticket(destination: att.Or<att.Entrypoint, att.Entrypoint>, tickets_to_export: Array<export_ticket_item>, params: Partial<ex.Parameters>): Promise<any> {
+        if (this.address != undefined) {
+            return await ex.call(this.address, "export_ticket", export_ticket_arg_to_mich(destination, tickets_to_export), params);
+        }
+        throw new Error("Contract not initialised");
+    }
+    async import_ticket(input: Array<import_ticket_param>, params: Partial<ex.Parameters>): Promise<any> {
+        if (this.address != undefined) {
+            return await ex.call(this.address, "import_ticket", import_ticket_arg_to_mich(input), params);
         }
         throw new Error("Contract not initialised");
     }
@@ -507,9 +682,9 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
-    async get_update_operators_for_all_param(upl: Array<update_for_all_op>, params: Partial<ex.Parameters>): Promise<att.CallParameter> {
+    async get_approve_param(input: Array<approve_param>, params: Partial<ex.Parameters>): Promise<att.CallParameter> {
         if (this.address != undefined) {
-            return await ex.get_call_param(this.address, "update_operators_for_all", update_operators_for_all_arg_to_mich(upl), params);
+            return await ex.get_call_param(this.address, "approve", approve_arg_to_mich(input), params);
         }
         throw new Error("Contract not initialised");
     }
@@ -531,15 +706,37 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
-    async balance_of(requests: Array<balance_of_request>, params: Partial<ex.Parameters>): Promise<Array<balance_of_response>> {
+    async get_export_ticket_param(destination: att.Or<att.Entrypoint, att.Entrypoint>, tickets_to_export: Array<export_ticket_item>, params: Partial<ex.Parameters>): Promise<att.CallParameter> {
         if (this.address != undefined) {
-            if (this.balance_of_callback_address != undefined) {
-                const entrypoint = new att.Entrypoint(new att.Address(this.balance_of_callback_address), "callback");
-                await ex.call(this.address, "balance_of", att.getter_args_to_mich(balance_of_arg_to_mich(requests), entrypoint), params);
-                return await ex.get_callback_value<Array<balance_of_response>>(this.balance_of_callback_address, x => { const res: Array<balance_of_response> = []; for (let i = 0; i < x.length; i++) {
-                    res.push((x => { return new balance_of_response((x => { return new balance_of_request((x => { return new att.Address(x); })(x.owner), (x => { return new att.Nat(x); })(x.token_id)); })(x.request), (x => { return new att.Nat(x); })(x.balance)); })(x[i]));
-                } return res; });
+            return await ex.get_call_param(this.address, "export_ticket", export_ticket_arg_to_mich(destination, tickets_to_export), params);
+        }
+        throw new Error("Contract not initialised");
+    }
+    async get_import_ticket_param(input: Array<import_ticket_param>, params: Partial<ex.Parameters>): Promise<att.CallParameter> {
+        if (this.address != undefined) {
+            return await ex.get_call_param(this.address, "import_ticket", import_ticket_arg_to_mich(input), params);
+        }
+        throw new Error("Contract not initialised");
+    }
+    async view_balance_of(requests: Array<balance_of_request>, params: Partial<ex.Parameters>): Promise<Array<balance_of_response>> {
+        if (this.address != undefined) {
+            const mich = await ex.exec_view(this.get_address(), "balance_of", view_balance_of_arg_to_mich(requests), params);
+            const res: Array<balance_of_response> = [];
+            for (let i = 0; i < mich.value.length; i++) {
+                res.push((x => { return new balance_of_response((x => { return new balance_of_request((x => { return new att.Address(x); })(x.owner), (x => { return new att.Nat(x); })(x.token_id)); })(x.request), (x => { return new att.Nat(x); })(x.balance)); })(mich.value[i]));
             }
+            return res;
+        }
+        throw new Error("Contract not initialised");
+    }
+    async view_total_supply(requests: Array<total_supply_request>, params: Partial<ex.Parameters>): Promise<Array<total_supply_response>> {
+        if (this.address != undefined) {
+            const mich = await ex.exec_view(this.get_address(), "total_supply", view_total_supply_arg_to_mich(requests), params);
+            const res: Array<total_supply_response> = [];
+            for (let i = 0; i < mich.value.length; i++) {
+                res.push((x => { return new total_supply_response((x => { return new att.Nat(x); })(x.token_id), (x => { return new att.Nat(x); })(x.total_supply)); })(mich.value[i]));
+            }
+            return res;
         }
         throw new Error("Contract not initialised");
     }
@@ -621,6 +818,32 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
+    async get_total_supply__value(key: total_supply__key): Promise<total_supply__value | undefined> {
+        if (this.address != undefined) {
+            const storage = await ex.get_storage(this.address);
+            const data = await ex.get_big_map_value(BigInt(storage.total_supply_), key.to_mich(), total_supply__key_mich_type, total_supply__value_mich_type), collapsed = true;
+            if (data != undefined) {
+                return new att.Nat(data);
+            }
+            else {
+                return undefined;
+            }
+        }
+        throw new Error("Contract not initialised");
+    }
+    async has_total_supply__value(key: total_supply__key): Promise<boolean> {
+        if (this.address != undefined) {
+            const storage = await ex.get_storage(this.address);
+            const data = await ex.get_big_map_value(BigInt(storage.total_supply_), key.to_mich(), total_supply__key_mich_type, total_supply__value_mich_type), collapsed = true;
+            if (data != undefined) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        throw new Error("Contract not initialised");
+    }
     async get_operator_value(key: operator_key): Promise<operator_value | undefined> {
         if (this.address != undefined) {
             const storage = await ex.get_storage(this.address);
@@ -647,12 +870,12 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
-    async get_operator_for_all_value(key: operator_for_all_key): Promise<operator_for_all_value | undefined> {
+    async get_approve__value(key: approve__key): Promise<approve__value | undefined> {
         if (this.address != undefined) {
             const storage = await ex.get_storage(this.address);
-            const data = await ex.get_big_map_value(BigInt(storage.operator_for_all), key.to_mich(), operator_for_all_key_mich_type, operator_for_all_value_mich_type), collapsed = true;
+            const data = await ex.get_big_map_value(BigInt(storage.approve_), key.to_mich(), approve__key_mich_type, approve__value_mich_type), collapsed = true;
             if (data != undefined) {
-                return new operator_for_all_value();
+                return new att.Nat(data);
             }
             else {
                 return undefined;
@@ -660,10 +883,10 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
-    async has_operator_for_all_value(key: operator_for_all_key): Promise<boolean> {
+    async has_approve__value(key: approve__key): Promise<boolean> {
         if (this.address != undefined) {
             const storage = await ex.get_storage(this.address);
-            const data = await ex.get_big_map_value(BigInt(storage.operator_for_all), key.to_mich(), operator_for_all_key_mich_type, operator_for_all_value_mich_type), collapsed = true;
+            const data = await ex.get_big_map_value(BigInt(storage.approve_), key.to_mich(), approve__key_mich_type, approve__value_mich_type), collapsed = true;
             if (data != undefined) {
                 return true;
             }
@@ -699,15 +922,61 @@ export class Fa2_1 {
         }
         throw new Error("Contract not initialised");
     }
+    register_transfer_event(ep: el.EventProcessor<transfer_event>) {
+        if (this.address != undefined) {
+            el.registerEvent({ source: this.address, filter: tag => { return tag == "transfer_event"; }, process: (raw: any, data: el.EventData | undefined) => {
+                    const event = (x => {
+                        return new transfer_event((x => { return new att.Address(x); })(x.sender), (x => { const res: Array<transfer_event_item> = []; for (let i = 0; i < x.length; i++) {
+                            res.push((x => { return new transfer_event_item((x => { return new att.Option<att.Address>(x == null ? null : (x => { return new att.Address(x); })(x)); })(x.from_), (x => { const res: Array<transfer_event_item_dest> = []; for (let i = 0; i < x.length; i++) {
+                                res.push((x => { return new transfer_event_item_dest((x => { return new att.Option<att.Address>(x == null ? null : (x => { return new att.Address(x); })(x)); })(x.to_), (x => { return new att.Nat(x); })(x.token_id), (x => { return new att.Nat(x); })(x.amount)); })(x[i]));
+                            } return res; })(x.txs)); })(x[i]));
+                        } return res; })(x.transfer));
+                    })(raw);
+                    ep(event, data);
+                } });
+            return;
+        }
+        throw new Error("Contract not initialised");
+    }
+    register_operator_update_event(ep: el.EventProcessor<operator_update_event>) {
+        if (this.address != undefined) {
+            el.registerEvent({ source: this.address, filter: tag => { return tag == "operator_update_event"; }, process: (raw: any, data: el.EventData | undefined) => {
+                    const event = (x => {
+                        return new operator_update_event((x => { return new att.Address(x); })(x.sender), (x => { const res: Array<operator_update_item> = []; for (let i = 0; i < x.length; i++) {
+                            res.push((x => { return new operator_update_item((x => { return new att.Address(x); })(x.owner), (x => { return new att.Address(x); })(x.operator), (x => { return new att.Nat(x); })(x.token_id), (x => { return x.prim ? (x.prim == "True" ? true : false) : x; })(x.is_operator)); })(x[i]));
+                        } return res; })(x.transfer));
+                    })(raw);
+                    ep(event, data);
+                } });
+            return;
+        }
+        throw new Error("Contract not initialised");
+    }
+    register_approval_event(ep: el.EventProcessor<approval_event>) {
+        if (this.address != undefined) {
+            el.registerEvent({ source: this.address, filter: tag => { return tag == "approval_event"; }, process: (raw: any, data: el.EventData | undefined) => {
+                    const event = (x => {
+                        return new approval_event((x => { return new att.Address(x); })(x.sender), (x => { const res: Array<approve_event_item> = []; for (let i = 0; i < x.length; i++) {
+                            res.push((x => { return new approve_event_item((x => { return new att.Address(x); })(x.owner), (x => { return new att.Address(x); })(x.spender), (x => { return new att.Nat(x); })(x.token_id), (x => { return new att.Nat(x); })(x.new_value)); })(x[i]));
+                        } return res; })(x.approval_update));
+                    })(raw);
+                    ep(event, data);
+                } });
+            return;
+        }
+        throw new Error("Contract not initialised");
+    }
     errors = {
+        FA2_1_INVALID_TICKET: att.string_to_mich("\"FA2.1_INVALID_TICKET\""),
+        FA2_INSUFFICIENT_BALANCE: att.string_to_mich("\"FA2_INSUFFICIENT_BALANCE\""),
+        NOT_HANDLED: att.string_to_mich("0"),
+        FA2_1_NOT_ENOUGH_ALLOWANCE: att.string_to_mich("\"FA2.1_NOT_ENOUGH_ALLOWANCE\""),
+        FA2_NOT_OPERATOR: att.string_to_mich("\"FA2_NOT_OPERATOR\""),
         fa2_r7: att.string_to_mich("\"FA2_INSUFFICIENT_BALANCE\""),
         fa2_r6: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"fa2_r6\"")]),
-        FA2_INSUFFICIENT_BALANCE: att.string_to_mich("\"FA2_INSUFFICIENT_BALANCE\""),
         fa2_r5: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"fa2_r5\"")]),
         INVALID_CALLER: att.string_to_mich("\"INVALID_CALLER\""),
-        FA2_NOT_OPERATOR: att.string_to_mich("\"FA2_NOT_OPERATOR\""),
         fa2_r4: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"fa2_r4\"")]),
-        fa2_r2: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"fa2_r2\"")]),
         CALLER_NOT_OWNER: att.string_to_mich("\"CALLER_NOT_OWNER\""),
         fa2_r1: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"fa2_r1\"")]),
         tmd_r1: att.pair_to_mich([att.string_to_mich("\"INVALID_CONDITION\""), att.string_to_mich("\"tmd_r1\"")]),
