@@ -11,7 +11,7 @@ import { ticket_wallet } from './binding/ticket_wallet';
 
 /* Accounts ----------------------------------------------------------------- */
 
-const alice = get_account('alice');
+const alice = get_account('guillaume');
 const bob = get_account('bob');
 const carl = get_account('carl');
 const user1 = get_account('bootstrap1');
@@ -19,7 +19,7 @@ const user2 = get_account('bootstrap2');
 
 /* Endpoint ---------------------------------------------------------------- */
 
-set_mockup()
+// set_mockup()
 
 /* Verbose mode ------------------------------------------------------------ */
 

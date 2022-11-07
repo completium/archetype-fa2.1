@@ -341,11 +341,12 @@ entry export_ticket(
     ltransfer_event_item.prepend(item);
   done;
   emit<transfer_event>({te_sender = caller; te_transfer = ltransfer_event_item});
-  operations :=
-    match destination with
+  for op in match destination with
       | left(c)  -> map(l, x -> make_operation(0tz, c, x))
       | right(c) -> [make_operation(0tz, c, l)]
-    end
+    end do
+    transfer op;
+  done
 }
 
 record import_ticket_param {
