@@ -88,6 +88,7 @@ constant FA2_1_UNSAFE_APPROVAL_CHANGE : string = "FA2.1_UNSAFE_APPROVAL_CHANGE"
 constant FA2_INSUFFICIENT_BALANCE     : string = "FA2_INSUFFICIENT_BALANCE"
 constant FA2_NOT_OPERATOR             : string = "FA2_NOT_OPERATOR"
 constant FA2_1_INVALID_TICKET         : string = "FA2.1_INVALID_TICKET"
+constant INVALID_TICKET_VALUE         : string = "INVALID_TICKET_VALUE"
 
 /* PARAMETERS ------------------------------------------------------------- */
 
@@ -340,7 +341,8 @@ entry export_ticket(
     else begin
       ledger.update((%from, ltoken_id), { lamount := new_amount });
     end;
-    l.prepend(create_ticket((ltoken_id, none<bytes>), eti.eti_amount));
+    const t ?= create_ticket((ltoken_id, none<bytes>), eti.eti_amount) : INVALID_TICKET_VALUE;
+    l.prepend(t);
     const item : transfer_event_item = {tei_from_ = some(%from); tei_txs = [{teid_to_ = none; teid_token_id = ltoken_id; teid_amount = eti.eti_amount}]};
     ltransfer_event_item.prepend(item);
   done;
