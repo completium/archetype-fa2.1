@@ -1,21 +1,17 @@
-import { Bytes, Entrypoint, Key, Nat, Option, Or, pair_to_mich, Signature, string_to_mich, Ticket } from '@completium/archetype-ts-types'
-import { blake2b, expect_to_fail, get_account, set_mockup, set_mockup_now, set_quiet } from '@completium/experiment-ts'
+import { Entrypoint, Nat, Or } from '@completium/archetype-ts-types'
+import { get_account, set_mockup, set_quiet } from '@completium/experiment-ts'
 
-const assert = require('assert');
+import assert from 'assert';
 
 /* Contracts */
 
-import { ledger_key, fa2_1, transfer_destination, transfer_param, export_ticket_item } from './binding/fa2_1';
+import { ledger_key, fa2_1, export_ticket_item } from './binding/fa2_1';
 import { ticket_wallet } from './binding/ticket_wallet';
 
 
 /* Accounts ----------------------------------------------------------------- */
 
 const alice = get_account('alice');
-const bob = get_account('bob');
-const carl = get_account('carl');
-const user1 = get_account('bootstrap1');
-const user2 = get_account('bootstrap2');
 
 /* Endpoint ---------------------------------------------------------------- */
 
@@ -33,7 +29,7 @@ const export_amount = new Nat(8);
 
 /* Scenarios --------------------------------------------------------------- */
 
-describe('[FA2.1] Contracts deployment', async () => {
+describe('[FA2.1] Contracts deployment', () => {
   it('FA2.1 contract deployment should succeed', async () => {
     await fa2_1.deploy(alice.get_address(), { as: alice })
   });
@@ -42,13 +38,13 @@ describe('[FA2.1] Contracts deployment', async () => {
   });
 });
 
-describe('[FA2.1] Minting', async () => {
+describe('[FA2.1] Minting', () => {
   it('Mint tokens as owner for ourself should succeed', async () => {
     await fa2_1.mint(alice.get_address(), token_id, amount, { as: alice });
   });
 });
 
-describe('[FA2.1] Ticket', async () => {
+describe('[FA2.1] Ticket', () => {
   it('Export', async () => {
     const ticket_before = await ticket_wallet.get_my_ticket();
     assert(ticket_before.is_none(), "Invalid value")
